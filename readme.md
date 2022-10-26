@@ -1,130 +1,148 @@
 DevOps-netology-23
 Vedernikov Alexandr
+Домашнее задание к занятию "3.3. Операционные системы. Лекция 1"
 
-1. Какого типа команда cd? Попробуйте объяснить, почему она именно такого типа; опишите ход 
-своих мыслей, если считаете что она могла бы быть другого типа.
-Решение: home@home:~/Загрузки$ type cd cd — это встроенная команда bash
+1. Какой системный вызов делает команда `cd`?
+   В прошлом ДЗ мы выяснили, что `cd` не является самостоятельной программой, это
+   `shell builtin`, поэтому запустить `strace` непосредственно на `cd` не получится. Тем
+   не менее, вы можете запустить `strace` на `/bin/bash -c 'cd /tmp'`. В этом случае вы
+   увидите полный список системных вызовов, которые делает сам `bash` при старте.
+   Вам нужно найти тот единственный, который относится именно к `cd`. Обратите внимание,
+   что `strace` выдаёт результат своей работы в поток stderr, а не в stdout.
 
-2. Какая альтернатива без pipe команде grep <some_string> <some_file> | wc -l? man grep 
-поможет в ответе на этот вопрос. Ознакомьтесь с документом о других подобных некорректных 
-вариантах использования pipe. 
-Решение: wc -l < <( grep <some_string> <some_file> ) 
-Показывает количество строк в файле <some_file> содержащих <some_string>
-Дополнение: grep <some_string> <some_file> -c
+   Решение:
+   Ближе к концу списка системных вызова есть chdir("/tmp"). Этот вызов относится к cd.
+2. Попробуйте использовать команду `file` на объекты разных типов в файловой системе.
+   Например:
 
-3. Какой процесс с PID 1 является родителем для всех процессов в вашей виртуальной машине 
-Ubuntu 20.04? 
-Решение: Первый процесс в системе запускается при инициализации ядра. 
-Данный процесс называется - systemd и имеет PID=1. Это прородитель всех процессов в системе. 
-vagrant@vagrant:~$ ps -A 
-PID TTY TIME CMD 
-1 ? 00:00:01 systemd 
-2 ? 00:00:00 kthreadd 
-3 ? 00:00:00 rcu_gp 
-4 ? 00:00:00 rcu_par_gp
+   ```shell notranslate position-relative overflow-auto
+   vagrant@netology1:~$ file /dev/tty
+   /dev/tty: character special (5/0)
+   vagrant@netology1:~$ file /dev/sda
+   /dev/sda: block special (8/0)
+   vagrant@netology1:~$ file /bin/bash
+   /bin/bash: ELF 64-bit LSB shared object, x86-64
+   ```
+   Используя `strace` выясните, где находится база данных `file`, на основании которой
+   она делает свои догадки.
 
-4. Как будет выглядеть команда, которая перенаправит вывод stderr ls на другую сессию 
-терминала? 
-Решение: vagrant@vagrant:/dev/pts$ ls -l dddd.txt fff 2>/dev/pts/1
+   Решение:
+   vagrant@vagrant:~/test$ strace file /dev/tty 1>tty.txt 2>&1
+   vagrant@vagrant:~/test$ strace file /dev/sda 1>sda.txt 2>&1
+   vagrant@vagrant:~/test$ strace file /bin/bash 1>bash.txt 2>&1
+   vagrant@vagrant:~/test$ grep -F -f tty.txt sda.txt > 3.txt
+   vagrant@vagrant:~/test$ grep -F -f 3.txt bash.txt > 3_1.txt
+   vagrant@vagrant:~/test$ nano 3_1.txt
+   Проанализировав файл получается все команды file пытаются открыть файл magic.mgc в двух
+   местах. Это файл базы типов файлов.
+   openat(AT_FDCWD, "/etc/magic.mgc", O_RDONLY) = -1 ENOENT (No such file or directory)
+   openat(AT_FDCWD, "/usr/share/misc/magic.mgc", O_RDONLY) = 3
+   
+3. Предположим, приложение пишет лог в текстовый файл. Этот файл оказался удален
+   (deleted в lsof), однако возможности сигналом сказать приложению переоткрыть файлы или
+   просто перезапустить приложение – нет. Так как приложение продолжает писать в удаленный
+   файл, место на диске постепенно заканчивается. Основываясь на знаниях о перенаправлении
+   потоков предложите способ обнуления открытого удаленного файла (чтобы освободить место
+   на файловой системе).
 
-5. Получится ли одновременно передать команде файл на stdin и вывести ее stdout в другой 
-файл? Приведите работающий пример. 
-Решение: vagrant@vagrant:~/test$ ls -l file_stdin.txt > file_stdout.txt
-Дополнение: cat file_stdin.txt > file_stdout.txt
-vagrant@vagrant:~/test$ cat file_stdin.txt 
-Вывод на псевдотерминал №0.
-ls: cannot access 'fff': No such file or directory
-vagrant@vagrant:~/test$ cat file_stdin.txt > file_stdout.txt
-vagrant@vagrant:~/test$ cat file_stdout.txt
-Вывод на псевдотерминал №0.
-ls: cannot access 'fff': No such file or directory
+   Решение:
+   vagrant@vagrant:~/test$ lsof -p 1126
+   ...
+   vi 1378 vagrant 4u REG 253,0 12288  526898 /home/vagrant/test/.tst_bash.swp (deleted)
+   vagrant@vagrant:~/test$ echo '' >/proc/1378/fd/4
+   где 1378 - PID процесса vi
+   4 - дескриптор файла, который предварительно удалил.
+4. Занимают ли зомби-процессы какие-то ресурсы в ОС (CPU, RAM, IO)?
 
-6. Получится ли находясь в графическом режиме, вывести данные из PTY в какой-либо из 
-эмуляторов TTY? Сможете ли вы наблюдать выводимые данные? 
-Решение: 
-home@home: ~$ tty /dev/pts/1 
-home@home:~ $ echo Hello World! Send from pts1 to tty2 >/dev/tty2 
-Чтобы переключиться в tty2 нужно нажать "ctrl + alt + F2". 
-Вывод в терминале. [https://drive.google.com/file/d/1j11hs-7Df6l_EiMVM1RtTwaJJ5tvhYR9/view?usp=sharing](https://drive.google.com/file/d/1j11hs-7Df6l_EiMVM1RtTwaJJ5tvhYR9/view?usp=sharing)
+   Решение:
+Процесс-зомби также известен как недействующий процесс, потому что он представлен в
+таблице процессов только под этим именем. Хотя процесс-зомби не использует никаких
+системных ресурсов, но сохраняет свою запись (PID) в таблице процессов системы.
+   Отобразить зомби-процессы: ps aux | grep defunct
+   Необходимо найти PID родителя: ps -xal | grep defunct
+   Для завершения зомби нужно родителю послать сигнал: kill -s SIGCHLD <PID родителя>
 
-7. Выполните команду bash 5>&1. К чему она приведет? Что будет, если вы выполните echo 
-netology > /proc/$$/fd/5? Почему так происходит? 
-Решение: 
-vagrant@vagrant: ~$ bash 5>&1 
-vagrant@vagrant:~ $ echo netology > /proc/$$/fd/5 netology команда bash 5>&1 создает в 
-текущей сессии консоли дескриптор, перенаправляя с 5 в stdout
+5. В iovisor BCC есть утилита `opensnoop`:
+   ```shell notranslate position-relative overflow-auto
+   root@vagrant:~# dpkg -L bpfcc-tools | grep sbin/opensnoop
+   /usr/sbin/opensnoop-bpfcc
+   ```
+   На какие файлы вы увидели вызовы группы `open` за первую секунду работы утилиты? 
+Воспользуйтесь пакетом `bpfcc-tools` для Ubuntu 20.04. 
+Дополнительные [сведения по установке](https://github.com/iovisor/bcc/blob/master/INSTALL.md).
 
-8. Получится ли в качестве входного потока для pipe использовать только stderr команды, не 
-потеряв при этом отображение stdout на pty? Напоминаем: по умолчанию через pipe передается 
-только stdout команды слева от | на stdin команды справа. Это можно сделать, поменяв 
-стандартные потоки местами через промежуточный новый дескриптор, который вы научились 
-создавать в предыдущем вопросе. 
-Решение: 
-vagrant@vagrant: ~$ ls -l dddd.txt test/ 2>&1 | grep such -c 1 
-vagrant@vagrant:~ $ ls -l dddd.txt test/ | grep such -c ls: cannot access 'dddd.txt': No 
-such file or directory 0 
-vagrant@vagrant:~$ ls -l dddd.txt test/ 5>&2 2>&1 1>&5 | grep such -c 
-test/: total 8 -rw-rw-r-- 1 
-vagrant vagrant 339 Oct 16 21:28 file_stdin.txt -rw-rw-r-- 1 
-vagrant vagrant 138 Oct 17 22:11 file_stdout.txt 1 stdout перенаправляется через временный 
-дескриптор 5 в stderr, а поток stderr передается на вход второй команды grep
+   Решение:
+   vagrant@vagrant:~/test$ sudo apt install bpfcc-tools
+   Reading package lists... Done
+   Building dependency tree
+   Reading state information... Done
+   bpfcc-tools is already the newest version (0.12.0-2).
+   0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+   vagrant@vagrant:~/test$ dpkg -L bpfcc-tools | grep sbin/opensnoop
+   /usr/sbin/opensnoop-bpfcc
+   vagrant@vagrant:~/test$ sudo /usr/sbin/opensnoop-bpfcc
+   PID    COMM               FD ERR PATH
+   904    vminfo              4   0 /var/run/utmp
+   635    dbus-daemon        -1   2 /usr/local/share/dbus-1/system-services
+   635    dbus-daemon        20   0 /usr/share/dbus-1/system-services
+   635    dbus-daemon        -1   2 /lib/dbus-1/system-services
+   635    dbus-daemon        20   0 /var/lib/snapd/dbus-1/system-services/
 
-9. Что выведет команда cat /proc/$$/environ? Как еще можно получить аналогичный по 
-содержанию вывод? 
-Решение: Будут выведены переменные окружения. Можно получить тоже самое (только с 
-разделением по переменным по строкам): printenv env
+6. Какой системный вызов использует `uname -a`? Приведите цитату из man по этому системному вызову, где описывается альтернативное местоположение в `/proc`, где можно узнать версию ядра и релиз ОС.
+   
+   Решение:
+для чтения полного man нужно проверить установку пакета manpages-dev.
+   vagrant@vagrant:~/test$ sudo apt install manpages-dev
+   vagrant@vagrant:~/test$ man 2 uname
+   Выдержка из man:
+Part  of the utsname information is also accessible via /proc/sys/kernel/{ostype, 
+hostname, osrelease, version, domainname}.
 
-10. Используя man, опишите что доступно по адресам /proc//cmdline, /proc//exe. 
-Решение: /proc//cmdline - этот файл содержит полную командную строку запуска процесса, 
-кроме тех процессов, что полностью ушли в своппинг, а также зомби. В этих двух случаях в 
-файле ничего нет, то есть чтение этого файла вернет 0 символов. /proc//exe - содержит 
-ссылку до файла запущенного для процесса , запуск этого файла, запустит еще одну копию 
-самого файла. cat /proc//exe - выведет содержимое запущенного файла,
+7. Чем отличается последовательность команд через `;` и через `&&` в bash? Например:
+   ```shell notranslate position-relative overflow-auto
+   root@netology1:~# test -d /tmp/some_dir; echo Hi
+   Hi
+   root@netology1:~# test -d /tmp/some_dir && echo Hi
+   root@netology1:~#
+   ```
+   Есть ли смысл использовать в bash `&&`, если применить `set -e`?
 
-11. Узнайте, какую наиболее старшую версию набора инструкций SSE поддерживает ваш процессор 
-с помощью /proc/cpuinfo. 
-Решение: Оба ядра процессора поддерживают SSE4_2. 
-vagrant@vagrant:~$ cat /proc/cpuinfo | grep sse 
-flags: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx 
-fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc 
-cpuid tsc_known_freq pni pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes 
-xsave avx rdrand hypervisor lahf_lm abm invpcid_single pti fsgsbase avx2 invpcid md_clear 
-flush_l1d 
-flags: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx 
-fxsr sse sse2 ht syscall nx rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc 
-cpuid tsc_known_freq pni pclmulqdq ssse3 cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt aes 
-xsave avx rdrand hypervisor lahf_lm abm invpcid_single pti fsgsbase avx2 invpcid md_clear 
-flush_l1d
+   Решение:
+`&&` - выполнить команду, следующую за ней`&&`, только если первая команда выполнена 
+успешно. Не все программы имеют одинаковое поведение, поэтому, чтобы это работало, 
+нужно понять, что программа считает «сбоем» и как она с этим справляется.
+   vagrant@vagrant:~/test$ true && echo "This will always run"
+   This will always run
+   vagrant@vagrant:~/test$ false && echo "This will always run"
+   vagrant@vagrant:~/test$
+`;` - просто разделитель, который не заботится о том, что произошло с командой раньше. 
+Вторая команда выполняется вне зависимости от того как завершилась первая.
+   vagrant@vagrant:~/test$ false ; echo "This will always run"
+   This will always run
+   vagrant@vagrant:~/test$ true ; echo "This will always run"
+   This will always run
+set -e - прерывает сессию при любом ненулевом значении исполняемых команд в конвеере 
+кроме последней.    
+В случае &&  вместе с set -e- вероятно не имеет смысла, так как при ошибке, выполнение 
+команд прекратиться.
 
-12. При открытии нового окна терминала и vagrant ssh создается новая сессия и выделяется pty.
-Это можно подтвердить командой tty, которая упоминалась в лекции 3.2. 
-Однако: vagrant@netology1:~$ ssh localhost 'tty' not a tty Почитайте, почему так происходит,
-и как изменить поведение. 
-Решение: Во многих источниках предлагается решение, путем внесения изменения в 
-Vagrantfile:
-config.vm.provision "fix-no-tty", type: "shell" do |s| s.privileged = false 
-s.inline = "sudo sed -i '/tty/!s/mesg n/tty -s \&\& mesg n/' /root/.profile" end 
-У меня не сработало. Единственное что помогло ssh -t localhost 'tty'
+8. Из каких опций состоит режим bash `set -euxo pipefail` и почему его хорошо было бы 
+   использовать в сценариях?
 
-13. Бывает, что есть необходимость переместить запущенный процесс из одной сессии в другую. 
-Попробуйте сделать это, воспользовавшись reptyr. Например, так можно перенести в screen 
-процесс, который вы запустили по ошибке в обычной SSH-сессии. 
-Решение:
+   Решение:
+   -е - немедленный выход, если выходное состояние команды ненулевое
+   -u - во время замещения рассматривает не заданную переменную как ошибку
+   -x - выводит команды и их аргументы по мере выполнения команд.
+   -o pipefail - этот параметр предотвращает маскирование ошибок в конвейере. В случае 
+сбоя какой-либо команды в конвейере этот код возврата будет использоваться как код 
+возврата для всего конвейера.
 
-* переводим процесс в фоновый режим: bg
-* Устанавливаем разрешение на трасировку. Устанавливаем значение 0 в файле 
-/proc/sys/kernel/yama/ptrace_scope
-* disown <name_of_process> Далее вам нужно будет изолировать дочерний процесс от 
-родительского процесса.
-* переходим в screen. reptyr $ ( pgrep <name_of_process>) - переносим процесс в screen. 
-После этого можно закрывать ssh не боясь завершения процесса.
+9. Используя `-o stat` для `ps`, определите, какой наиболее часто встречающийся статус 
+у процессов в системе. В `man ps` ознакомьтесь (`/PROCESS STATE CODES`) что значат 
+дополнительные к основной заглавной буквы статуса процессов. Его можно не учитывать 
+при расчете (считать S, Ss или Ssl равнозначными).
 
-14. sudo echo string > /root/new_file не даст выполнить перенаправление под обычным 
-пользователем, так как перенаправлением занимается процесс shell'а, который запущен без 
-sudo под вашим пользователем. Для решения данной проблемы можно использовать конструкцию 
-echo string | sudo tee /root/new_file. Узнайте что делает команда tee и почему в отличие от
-sudo echo команда с sudo tee будет работать. 
-Решение: Команда tee делает вывод в файл или файлы, указанные в качестве параметра. 
-В примере команда получает вывод из stdin, перенаправленный через pipe от stdout команды 
-echo.
-Команда tee запущена от sudo, соотвественно имеет права на запись в файл.
+   Решение:
+   S*(S,S+,Ss,Ssl,Ss+) - Процессы ожидающие завершения (спящие с прерыванием "сна").
+   I*(I,I<) - фоновые(бездействующие) процессы ядра.
+   доп символы это доп характеристики, например приоритет.
