@@ -11,10 +11,10 @@ Vedernikov Alexandr
    что `strace` выдаёт результат своей работы в поток stderr, а не в stdout.
 
    Решение:
-   Ближе к концу списка системных вызова есть chdir("/tmp"). Этот вызов относится к cd.
+Ближе к концу списка системных вызова есть chdir("/tmp"). Этот вызов относится к cd.
+
 2. Попробуйте использовать команду `file` на объекты разных типов в файловой системе.
    Например:
-
    ```shell notranslate position-relative overflow-auto
    vagrant@netology1:~$ file /dev/tty
    /dev/tty: character special (5/0)
@@ -33,8 +33,8 @@ Vedernikov Alexandr
    vagrant@vagrant:~/test$ grep -F -f tty.txt sda.txt > 3.txt
    vagrant@vagrant:~/test$ grep -F -f 3.txt bash.txt > 3_1.txt
    vagrant@vagrant:~/test$ nano 3_1.txt
-   Проанализировав файл получается все команды file пытаются открыть файл magic.mgc в двух
-   местах. Это файл базы типов файлов.
+Проанализировав файл получается все команды file пытаются открыть файл magic.mgc в двух
+местах. Это файл базы типов файлов.
    openat(AT_FDCWD, "/etc/magic.mgc", O_RDONLY) = -1 ENOENT (No such file or directory)
    openat(AT_FDCWD, "/usr/share/misc/magic.mgc", O_RDONLY) = 3
    
@@ -52,6 +52,7 @@ Vedernikov Alexandr
    vagrant@vagrant:~/test$ echo '' >/proc/1378/fd/4
    где 1378 - PID процесса vi
    4 - дескриптор файла, который предварительно удалил.
+
 4. Занимают ли зомби-процессы какие-то ресурсы в ОС (CPU, RAM, IO)?
 
    Решение:
@@ -67,7 +68,7 @@ Vedernikov Alexandr
    root@vagrant:~# dpkg -L bpfcc-tools | grep sbin/opensnoop
    /usr/sbin/opensnoop-bpfcc
    ```
-   На какие файлы вы увидели вызовы группы `open` за первую секунду работы утилиты? 
+На какие файлы вы увидели вызовы группы `open` за первую секунду работы утилиты? 
 Воспользуйтесь пакетом `bpfcc-tools` для Ubuntu 20.04. 
 Дополнительные [сведения по установке](https://github.com/iovisor/bcc/blob/master/INSTALL.md).
 
