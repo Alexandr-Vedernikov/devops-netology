@@ -131,19 +131,15 @@ mail.google.com: 64.233.164.19
 * Полученный файл должен иметь имя исходного файла, разница в наименовании обеспечивается разницей расширения файлов
 
 ### Ваш скрипт:
-
-На месте проблемного блока сейчас стоит заглушка выдающая сообщение об ошибки.  
-Но не говорящая о местонахождении её.  
-Остальной функционал реализован.  
+ 
 
 ```python
 #!/usr/bin/env python3
 
 from sys import argv
 import os
-import sys
-from json.decoder import JSONDecodeError
 import json
+import yaml
 
 script, in_name_file = argv
 # Проверка на наличие файла
@@ -161,14 +157,12 @@ for end_fi in [".yaml", ".yml", ".json"]:
         print('Файл не подходящего формата (*.yaml, *.yml, *.json).')
         exit()
 
-# Блок который так и не завершен. Не могу вывести error message JSONDecodeError.
-# Пример json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 4 column 5 (char 88)
-# Приведенная строка выше как раз отвечает на вопросы по местонаходжению ошибки 
+# Обработка ошибок при открытии JSON
 try:
     with open(cmd) as f:
         d = json.load(f)
-except json.decoder.JSONDecodeError:
-    print('Ошибка в файле ' + in_name_file)
+except json.JSONDecodeError as exc:
+    print(f'Ошибка {exc}')
     exit()
 
 # Функция записи текущих IP в YAML файл
