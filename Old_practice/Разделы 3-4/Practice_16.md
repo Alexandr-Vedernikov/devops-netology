@@ -29,8 +29,7 @@
 
 Добавил недостающие символы. Выделили их красным цветом.
 
-![](Old_practice/Practice_16/1.png)
-
+![](Practice_16/1.png)
 ---
 
 ## Задание 2
@@ -94,7 +93,7 @@ while out_while == 1:
 2022-12-18 01:47:40 [ERROR] google.com IP mistmatch: 64.233.165.100 64.233.165.139
 ```
 
-![](Old_practice/Practice_16/2.png)
+![](Practice_16/2.png)
 
 ### json-файл(ы), который(е) записал ваш скрипт:
 
