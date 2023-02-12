@@ -84,10 +84,10 @@ ansible [core 2.14.1]
 Решение:
 
 Файлы настроек:  
-    - [Vagrantfile](./Practice_5.2/Vagrantfile)  
-    - [playbook.yml](./Practice_5.2/playbook.yml)  
-    - [ansible.cfg](./Practice_5.2/ansible.cfg)  
-    - [./inventory/hosts](./Practice_5.2/inventory/hosts)  
+    - [Vagrantfile](Vagrantfile)  
+    - [playbook.yml](playbook.yml)  
+    - [ansible.cfg](ansible.cfg)  
+    - [./inventory/hosts](inventory/hosts)  
 
 Вывод при запуске VM и проверка выполнения сценария ansible  
 ````

@@ -78,7 +78,7 @@ vagrant@TestServer1:~/terraform$ yc compute image list
 | fd8165nqfv75vs8jdtso | centos-7-base | centos | f2ei2tsbd97v7jap5rhc | READY  |
 +----------------------+---------------+--------+----------------------+--------+
 ````
-![](Old_practice/Раздел_5/Practice_5.4/1.1.png)
+![](1.1.png)
 
 
 ## Задание 2
@@ -100,7 +100,8 @@ vagrant@TestServer1:~/terraform$ wget -qO- eth0.me
 После этого удалось инсталлировать terraform и yandex cloud.  
 Удалось запустить ВМ в yandex cloud.  
 Ниже скрин из консоли и результат выполнения "yc compute instance list".  
-![](Old_practice/Раздел_5/Practice_5.4/2end.png)
+
+![](2end.png)
 
 
 ## Задача 3
@@ -129,5 +130,6 @@ a7e530a1083e   gcr.io/cadvisor/cadvisor:v0.47.0   "/usr/bin/cadvisor -…"   6 m
 [centos@node01 ~]$ 
 ````
 Ниже скрины запущенного мониторинга и работающей ВМ. 
-![](Old_practice/Раздел_5/Practice_5.4/3end.png)
-![](Old_practice/Раздел_5/Practice_5.4/3_yandex_cloud.png)
+
+![](3end.png)
+![](3_yandex_cloud.png)
