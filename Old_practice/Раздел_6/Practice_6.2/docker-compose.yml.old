@@ -1,0 +1,22 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:12.14
+    environment:
+      POSTGRES_DB: "test_db"
+      POSTGRES_USER: "test-admin-user"
+      POSTGRES_PASSWORD: "Password"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      #- ./script. Init Database:/docker-entrypoint-initdb.d
+      - ./bd:/var/lib/postgresql/data
+      - ./backup:/var/lib/postgresql/backup
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test-admin-user -d test_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
