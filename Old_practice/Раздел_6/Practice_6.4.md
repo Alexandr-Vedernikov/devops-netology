@@ -230,10 +230,9 @@ price. И какие дальнейшие производятся действ�
 Решение:
 
 Чтобы обеспечить уникальность значений столбца title в таблицах test_database, при использовании утилиты pg_dump, нужно 
-использовать команду CLI CREATE UNIQUE INDEX title1_pid ON public.orders_1(title).  
-Раз мы разделили orders на orders_1 и orders_2, значит должно быть 2-а запроса:  
-CREATE UNIQUE INDEX title1_pid ON public.orders_1(title)  
-CREATE UNIQUE INDEX title2_pid ON public.orders_2(title)  
+использовать команду ALTER TABLE ONLY:
+Для уникальности значения столбца title добавим строку в бэкап
+ALTER TABLE ONLY public.orders ADD CONSTRAINT title_unique UNIQUE (title);
 
 Пример скрипта для создания бэкап-файла.
 ````
@@ -252,8 +251,7 @@ database=test_database
 # удаление бэкап-файлов старше 60 дней за усключением бэкапов середены месяца.
 find $pathB \( -name "*-1[^5].*" -o -name "*-[023]?.*" \) -ctime +61 -delete
 
-psql -h 127.0.0.1 -U $DB_USER -d $database -c "CREATE UNIQUE INDEX title1_pid ON public.orders_1(title)"
-psql -h 127.0.0.1 -U $DB_USER -d $database -c "CREATE UNIQUE INDEX title2_pid ON public.orders_2(title)"
+psql -h 127.0.0.1 -U $DB_USER -d $database -c "ALTER TABLE ONLY public.orders ADD CONSTRAINT title_unique UNIQUE (title)"
 
 # создание backup и последующее архивирование с указанием даты бэкап-а
 pg_dump -h 127.0.0.1 -U $DB_USER -d $database | gzip > $pathB/pgsql_$(date "+%Y-%m-%d").sql.gz
