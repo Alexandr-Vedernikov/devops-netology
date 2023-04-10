@@ -1,187 +1,286 @@
-# Домашнее задание к занятию 7.1 "Введение в Terraform"
+# Домашнее задание к занятию 7.3 "Управляющие конструкции в коде Terraform"
 
 ---
 
-## Чеклист готовности к домашнему заданию
-
-1) Скачайте и установите актуальную версию terraform(не менее 1.3.7). Приложите скриншот вывода 
-команды terraform --version  
-2) Скачайте на свой ПК данный git репозиторий. Исходный код для выполнения задания расположен в 
-директории 01/src.  
-3) Убедитесь, что в вашей ОС установлен docker  
-
-Решение:
-
-Скриншот с пупктами из чеклиста 
-
-![check_list.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.1%2Fcheck_list.png)
-
-
 ## Задание 1
 
-1. Перейдите в каталог src. Скачайте все необходимые зависимости, использованные в проекте. 
-2. Изучите файл .gitignore. В каком terraform файле допустимо сохранить личную, секретную информацию? 
-3. Выполните код проекта. Найдите в State-файле секретное содержимое созданного ресурса random_password. Пришлите 
-его в качестве ответа.   
-4. Раскомментируйте блок кода, примерно расположенный на строчках 29-42 файла main.tf. Выполните команду terraform 
-validate. Объясните в чем заключаются намеренно допущенные ошибки? Исправьте их.   
-5. Выполните код. В качестве ответа приложите вывод команды docker ps   
-6. Замените имя docker-контейнера в блоке кода на hello_world, выполните команду terraform apply -auto-approve. 
-Объясните своими словами, в чем может быть опасность применения ключа -auto-approve ?   
-7. Уничтожьте созданные ресурсы с помощью terraform. Убедитесь, что все ресурсы удалены. Приложите содержимое файла 
-terraform.tfstate.   
-8. Объясните, почему при этом не был удален docker образ nginx:latest ?(Ответ найдите в коде проекта или документации)  
-
+1) Изучите проект.  
+2) Заполните файл personal.auto.tfvars  
+3) Инициализируйте проект, выполните код (он выполнится даже если доступа к preview нет).  
+Примечание: Если у вас не активирован preview доступ к функционалу "Группы безопасности" в Yandex Cloud - запросите 
+доступ у поддержки облачного провайдера. Обычно его выдают в течении 24-х часов.  
+Приложите скриншот входящих правил "Группы безопасности" в ЛК Yandex Cloud или скриншот отказа в предоставлении 
+доступа к preview версии.    
 
 Решение:
 
-1) Для скачивания и установки всех зависимостей необходимо запустить команду terraform init и дождаться успешного 
-ее выполнения.   
+Получил доступ к группам безопасности. Заполнил файл с секретными персональными данными. Выполнил проект.  
+Запустил проект. Скриншот ниже:  
 
-<details><summary>Вывод консоли после ввода команды terraform init</summary>
+![1.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F1.png)
+
+
+## Задание 2
+
+1) Создайте файл count-vm.tf. Опишите в нем создание двух одинаковых виртуальных машин с минимальными параметрами, 
+используя мета-аргумент count loop.
+2) Создайте файл for_each-vm.tf. Опишите в нем создание 2 разных по cpu/ram/disk виртуальных машин, используя 
+мета-аргумент for_each loop. Используйте переменную типа list(object({ vm_name=string, cpu=number, ram=number, 
+disk=number })). При желании внесите в переменную все возможные параметры.
+3) ВМ из пункта 2.2 должны создаваться после создания ВМ из пункта 2.1.
+4) Используйте функцию file в local переменной для считывания ключа ~/.ssh/id_rsa.pub и его последующего 
+использования в блоке metadata, взятому из ДЗ №2.
+5) Инициализируйте проект, выполните код.
+
+Решение:
+
+Для выполнения задания были созданы 2-а файла (count-vm.tf, for_each-vm.tf) и внесены доп-е блоки в файл variables.tf
+
+<details><summary>Дополнения в файле variables.tf init</summary>
 
 ````
-(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.1/src$ terraform init
-
-Initializing the backend...
-
-Initializing provider plugins...
-- Finding kreuzwerker/docker versions matching "~> 3.0.1"...
-- Finding latest version of hashicorp/random...
-- Installing kreuzwerker/docker v3.0.2...
-- Installed kreuzwerker/docker v3.0.2 (unauthenticated)
-- Installing hashicorp/random v3.4.3...
-- Installed hashicorp/random v3.4.3 (unauthenticated)
-
-Terraform has created a lock file .terraform.lock.hcl to record the provider
-selections it made above. Include this file in your version control repository
-so that Terraform can guarantee to make the same selections by default when
-you run "terraform init" in the future.
-
-╷
-│ Warning: Incomplete lock file information for providers
-│ 
-│ Due to your customized provider installation methods, Terraform was forced to calculate lock file checksums locally for the following providers:
-│   - hashicorp/random
-│   - kreuzwerker/docker
-│ 
-│ The current .terraform.lock.hcl file only includes checksums for linux_amd64, so Terraform running on another platform will fail to install these providers.
-│ 
-│ To calculate additional checksums for another platform, run:
-│   terraform providers lock -platform=linux_amd64
-│ (where linux_amd64 is the platform to generate)
-╵
-
-Terraform has been successfully initialized!
-
-You may now begin working with Terraform. Try running "terraform plan" to see
-any changes that are required for your infrastructure. All Terraform commands
-should now work.
-
-If you ever set or change modules or backend configuration for Terraform,
-rerun this command to reinitialize your working directory. If you forget, other
-commands will detect it and remind you to do so if necessary.
-(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.1/src$
+variable "vms_varible" {
+  type = list(object({
+    vm_name = string
+    cpu     = number
+    ram     = number
+    disk    = number
+  }))
+  default = [
+    {
+      vm_name = "vm-1"
+      cpu     = 2
+      ram     = 2
+      disk    = 10
+    },
+    {
+      vm_name = "vm-2"
+      cpu     = 4
+      ram     = 4
+      disk    = 15
+    }
+  ]
+}
 ````
-
 </details>
 
-2) В файле .gitignore указываются исключения (файлы или дириктории), которые не попадают в commit и при последующем push
-они не загружаются в репозиторий. Секретная личная информация хранится в файле personal.auto.tfvars
+Ниже приведены тексты модулей (count-vm.tf, for_each-vm.tf) для создания ВМ.  
 
-3) Выполнение кода запускается командой terraform apply.     
-Секретная строка из terraform.tfstate:  
-"result": "30pO4HSWuaQsli0d"
-
-4) Раскомментируйте блок кода, примерно расположенный на строчках 29-42 файла main.tf. Выполните команду terraform 
-validate. Объясните в чем заключаются намеренно допущенные ошибки? Исправьте их.
-
-   - 
+<details><summary>Модуль создания одинаковых ВМ, count-vm.tf init</summary>
 
 ````
-Error: Missing name for resource
-│ 
-│   on main.tf line 24, in resource "docker_image":
-│   24: resource "docker_image" {
-│ 
-│ All resource blocks must have 2 labels (type, name).
-````
-В загалоке ресурса указан только его тип. Нужно указать еще имя. 
-Например: 
-````
-resource "docker_image" "my_nginx" {
-  name         = "nginx:latest"
-  keep_locally = true
-````
+locals {
+  ssh_key_const_vm = file("~/.ssh/id_rsa.pub")
+}
 
-   - 
+# Create virtual machines based on constant instance_configs
+resource "yandex_compute_instance" "vm-const" {
+  name        = "vm-const-${count.index}"
+  platform_id = "standard-v1"
 
-````
- Error: Invalid resource name
-│ 
-│   on main.tf line 29, in resource "docker_container" "1nginx":
-│   29: resource "docker_container" "1nginx" {
-````
+  count = 2
 
-Имя должно начинаться с буквы или знака подчеркивания и может содержать только буквы, цифры, знаки подчеркивания 
-и тире.  
-Например: 
-````
-resource "docker_container" "my_1nginx" {
-  image = docker_image.my_nginx.name # Попутно в данной строке нужно обновить привязку к ресурсу docker_image
-````
-
-   - 
-
-А таг же необходимо заполнить блок provider "docker" {}
-
-````
-provider "docker" {
-  registry_auth {
-    address = var.docker_address
-    username = var.docker_username
-    password = var.docker_password
+  resources {
+    cores  = var.vms_const.cpu
+    memory = var.vms_const.ram
   }
+
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu-2004-lts.image_id
+      type = "network-hdd"
+      size = var.vms_const.disk
+    }
+  }
+
+  metadata = {
+    #ssh-keys = "ubuntu:${var.public_key}"
+    ssh-keys_const_vm = "ubuntu:${local.ssh_key_const_vm}"
+  }
+
+  scheduling_policy { preemptible = true }
+
+  network_interface {
+    subnet_id = yandex_vpc_subnet.develop.id
+    nat       = true
+  }
+  allow_stopping_for_update = true
+}
+````
+</details>
+
+
+<details><summary>Модуль создания ВМ с различными параметрами, for_each-vm.tf init</summary>
+
+````
+locals {
+  ssh_key_varible_vm = file("~/.ssh/id_rsa.pub")
+}
+
+# Create virtual machines based on the instance_configs variable
+resource "yandex_compute_instance" "vm" {
+  depends_on = [yandex_compute_instance.vm-const]
+  for_each = { for cfg in var.vms_varible : cfg.vm_name => cfg }
+
+  name        = each.value.vm_name
+  platform_id = "standard-v1"
+
+  resources {
+    cores  = each.value.cpu
+    memory = each.value.ram
+  }
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu-2004-lts.image_id
+      type = "network-hdd"
+      size = each.value.disk
+    }
+  }
+
+  metadata = {
+    #ssh-keys = "ubuntu:${var.public_key}"
+    ssh-keys_varible_vm = "ubuntu:${local.ssh_key_varible_vm}"
+  }
+
+  scheduling_policy { preemptible = true }
+
+  network_interface {
+    subnet_id = yandex_vpc_subnet.develop.id
+    nat       = true
+  }
+  allow_stopping_for_update = true
+}
+````
+</details>
+
+Ниже представлен скриншот из личного кабинета с запущенными ВМ с учетом очередности.
+
+![2_final.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F2_final.png)
+
+Ниже представлен скриншот выполнения команды terraform apply, показывающий очередность создания ВМ.  
+
+![2.3_create.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F2.3_create.png)
+
+
+## Задание 3
+
+1) Создайте 3 одинаковых виртуальных диска, размером 1 Гб с помощью ресурса yandex_compute_disk и мета-аргумента count.  
+2) Создайте одну любую ВМ. Используйте блок dynamic secondary_disk{..} и мета-аргумент for_each для подключения 
+созданных вами дополнительных дисков.  
+3) Назначьте ВМ созданную в 1-м задании группу безопасности.  
+
+Решение:
+
+1) Создайте 3 одинаковых виртуальных диска, размером 1 Гб с помощью ресурса yandex_compute_disk и мета-аргумента count.
+
+````
+resource "yandex_compute_disk" "virtual_disk" {
+  count = 3
+  name  = "virtual-disk-${count.index}"
+  size  = 5
+  type  = "network-hdd"
+  zone  = var.default_zone
 }
 ````
 
-5) Выполните код. В качестве ответа приложите вывод команды docker ps 
+2) Создайте одну любую ВМ. Используйте блок dynamic secondary_disk{..} и мета-аргумент for_each для подключения 
+созданных вами дополнительных дисков.
+3) Назначьте ВМ созданную в 1-м задании группу безопасности.  
 
-![5.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.1%2F5.png)
+<details><summary>Модуль создания ВМ с применением гр. безопасности и подключении дисков </summary>
 
-6) Замените имя docker-контейнера в блоке кода на hello_world, выполните команду terraform apply -auto-approve. 
-Объясните своими словами, в чем может быть опасность применения ключа -auto-approve ?
-
-Использование ключа `terraform apply -auto-approve` может быть опасным, поскольку он будет автоматически 
-применять изменения к вашей инфраструктуре без запроса подтверждения. Это означает, что любые ошибки или 
-неправильная конфигурация в коде Terraform могут привести к непреднамеренным изменениям в вашей инфраструктуре, 
-что может стать причиной простоя или потери данных.
-
-7) Уничтожьте созданные ресурсы с помощью terraform. Убедитесь, что все ресурсы удалены. Приложите содержимое файла 
-terraform.tfstate. 
-Удаление созданных ресурсов производится с помощью команды terraform destroy. Содержание файла terraform.tfstate:
 ````
-{
-  "version": 4,
-  "terraform_version": "1.4.2",
-  "serial": 43,
-  "lineage": "f9a46cfc-c528-d292-11b5-cbc6a71c6aa7",
-  "outputs": {},
-  "resources": [],
-  "check_results": null
+resource "yandex_compute_instance" "virtual_machine" {
+  depends_on = [yandex_compute_instance.vm]
+  name = "host-disk-storage"
+  zone = var.default_zone
+  #platform_id = var.default_platform_id
+  resources {
+    cores  = 2
+    memory = 2
+  }
+
+  boot_disk {
+    initialize_params {
+      image_id = data.yandex_compute_image.ubuntu-2004-lts.image_id
+    }
+  }
+
+  dynamic "secondary_disk" {
+    for_each = yandex_compute_disk.virtual_disk
+    content {
+      device_name = "disk-${secondary_disk.key}"
+      disk_id     = yandex_compute_disk.virtual_disk[secondary_disk.key].id
+    }
+  }
+
+  metadata = {
+    ssh-keys_varible_vm = "ubuntu:${local.ssh_key_varible_vm}"
+  }
+
+  scheduling_policy { preemptible = true }
+
+  network_interface {
+    subnet_id = yandex_vpc_subnet.develop.id
+    nat       = true
+  }
+  allow_stopping_for_update = true
+}
+
+````
+</details>
+
+Ниже скриншот успешного запуска проекта с применением в ВМ правил безопасности и подключение 3-х дисков.
+
+![3_all.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F3_all.png)
+
+
+## Задание 4
+
+1) Создайте inventory-файл для ansible. Используйте функцию tepmplatefile и файл-шаблон для создания 
+ansible inventory-файла из лекции. Готовый код возьмите из демонстрации к лекции demonstration2. Передайте в него 
+в качестве переменных имена и внешние ip-адреса ВМ из задания 2.1 и 2.2.  
+2) Выполните код. Приложите скриншот получившегося файла.  
+Для общего зачета создайте в вашем GitHub репозитории новую ветку terraform-03. Закомитьте в эту ветку свой 
+финальный код проекта, пришлите ссылку на коммит.  
+Удалите все созданные ресурсы.  
+
+Решение:
+
+
+
+<details><summary>Модуль создания c функцией tepmplatefile для создания inventory-файла.</summary>
+
+````
+resource "local_file" "hosts_cfg" {
+  content = templatefile("${path.module}/hosts.tftpl",
+    {
+      webservers  = yandex_compute_instance.vm-const
+      webservers1 = yandex_compute_instance.vm
+    }
+  )
+  filename = "${abspath(path.module)}/hosts.cfg"
 }
 ````
+</details>
 
-8) Объясните, почему при этом не был удален docker образ nginx:latest? (Ответ найдите в коде проекта или документации)
+<details><summary>Файл-шаблон для создания ansible inventory-файла.</summary>
 
-По умолчанию Terraform destroy не удаляет образы Docker созданные вне terraform. Однако если код Terraform 
-содержит инструкции по созданию или управлению образами Docker, и эти ресурсы определены как часть инфраструктуры, 
-тогда Terraform destroy также удалит эти образы Docker.  
+````
+[webservers]
 
-В тексте проекта создаются две сущности:  
-resource "docker_image" "my_nginx" {}  
-resource "docker_container" "nginx_my" {}  
+%{~ for i in webservers ~}
 
-При этом при выполнении команды terraform destroy удаляется контейнер "nginx_my".  
-При этом docker image "my_nginx" не удаляется, т.к. в ресурсе есть деректива keep_locally = true. Если бы ее не 
-было, тогда удалиться и image.
+${i["name"]}   ansible_host=${i["network_interface"][0]["nat_ip_address"]} 
+%{~ endfor ~}
+
+%{~ for i in webservers1 ~}
+
+${i["name"]}   ansible_host=${i["network_interface"][0]["nat_ip_address"]} 
+%{~ endfor ~}
+````
+</details>
+
+Скриншот созданного файла, после выполнения кода проекта.
+
+![4_all.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F4_all.png)

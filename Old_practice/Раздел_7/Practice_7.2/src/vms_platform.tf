@@ -1,23 +1,23 @@
 data "yandex_compute_image" "ubuntu_db" {
   #family = "ubuntu-2004-lts"
-  #family = var.vm_db_family
-  family = "${local.family_vm_db}"
+  family = var.vm_db_family
+  #family = "${local.vm_db}"
 }
 
 resource "yandex_compute_instance" "platform_db" {
   #name        = "netology-develop-platform-db"
   #name        = var.vm_db_name
-  name         = "${local.name_vm_db}"
+  name         = "${local.vm_db}"
   #platform_id = "standard-v1"
-  #platform_id = var.vm_db_platform_id
-  platform_id = "${local.planform_id_vm_db}"
+  platform_id = var.vm_db_platform_id
+  #platform_id = "${local. .planform_id_vm_db}"
   resources {
     #cores         = 2
-    cores         = tonumber(var.vm_db_resources.cores)
+    cores         = var.vm_db_resources.cores
     #memory        = 2
-    memory        = tonumber(var.vm_db_resources.memory)
+    memory        = var.vm_db_resources.memory
     #core_fraction = 20
-    core_fraction = tonumber(var.vm_db_resources.core_fraction)
+    core_fraction = var.vm_db_resources.core_fraction
   }
   boot_disk {
     initialize_params {
