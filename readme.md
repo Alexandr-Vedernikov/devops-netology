@@ -1,286 +1,317 @@
-# Домашнее задание к занятию 7.3 "Управляющие конструкции в коде Terraform"
+# Домашнее задание к занятию 7.4 "Продвинутые методы работы с Terraform"
 
 ---
 
 ## Задание 1
 
-1) Изучите проект.  
-2) Заполните файл personal.auto.tfvars  
-3) Инициализируйте проект, выполните код (он выполнится даже если доступа к preview нет).  
-Примечание: Если у вас не активирован preview доступ к функционалу "Группы безопасности" в Yandex Cloud - запросите 
-доступ у поддержки облачного провайдера. Обычно его выдают в течении 24-х часов.  
-Приложите скриншот входящих правил "Группы безопасности" в ЛК Yandex Cloud или скриншот отказа в предоставлении 
-доступа к preview версии.    
+1) Возьмите из демонстрации к лекции готовый код для создания ВМ с помощью remote модуля.  
+2) Создайте 1 ВМ, используя данный модуль. В файле cloud-init.yml необходимо использовать переменные в блоке vars ={} . 
+Воспользуйтесь примером. Обратите внимание, что ssh-authorized-keys принимает в себя список, а не строку!    
+3) Добавьте в файл cloud-init.yml установку nginx.  
+4) Предоставьте скриншот подключения к консоли и вывод команды sudo nginx -t.  
 
 Решение:
 
-Получил доступ к группам безопасности. Заполнил файл с секретными персональными данными. Выполнил проект.  
-Запустил проект. Скриншот ниже:  
+2) Создайте 1 ВМ, используя данный модуль. В файле cloud-init.yml необходимо использовать переменные в блоке vars ={} . 
+Воспользуйтесь примером. Обратите внимание, что ssh-authorized-keys принимает в себя список, а не строку!
 
-![1.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F1.png)
+````
+module "test-vm" {
+  source          = "git::https://github.com/udjin10/yandex_compute_instance.git?ref=main"
+  env_name        = var.vpc_name
+  network_id      = module.vpc.vpc_id
+  subnet_zones    = [ var.default_zone ]
+  subnet_ids      = [ module.vpc.subnet_id ]
+  instance_name   = var.vm_web_name
+  instance_count  = 1
+  image_family    = "ubuntu-2004-lts"
+  public_ip       = true
+
+  metadata = {
+      user-data          = data.template_file.cloudinit.rendered #Для демонстрации №3
+      serial-port-enable = 1
+  }
+}
+
+data "template_file" "cloudinit" {
+ template = file("./cloud-init.yml")
+ vars = {
+ ssh_key = local.ssh_key
+ }
+}
+````
+
+3) Добавьте в файл cloud-init.yml установку nginx. 
+
+Содержание файла cloud-init.yml:
+
+````
+#cloud-config
+users:
+  - name: ubuntu
+    groups: sudo
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - ${ssh_key}
+package_update: true
+package_upgrade: false
+packages:
+    - nginx-full
+````
+
+4) Предоставьте скриншот подключения к консоли и вывод команды sudo nginx -t. 
+
+![1.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.4%2F1.png)
 
 
 ## Задание 2
 
-1) Создайте файл count-vm.tf. Опишите в нем создание двух одинаковых виртуальных машин с минимальными параметрами, 
-используя мета-аргумент count loop.
-2) Создайте файл for_each-vm.tf. Опишите в нем создание 2 разных по cpu/ram/disk виртуальных машин, используя 
-мета-аргумент for_each loop. Используйте переменную типа list(object({ vm_name=string, cpu=number, ram=number, 
-disk=number })). При желании внесите в переменную все возможные параметры.
-3) ВМ из пункта 2.2 должны создаваться после создания ВМ из пункта 2.1.
-4) Используйте функцию file в local переменной для считывания ключа ~/.ssh/id_rsa.pub и его последующего 
-использования в блоке metadata, взятому из ДЗ №2.
-5) Инициализируйте проект, выполните код.
+1) Напишите локальный модуль vpc, который будет создавать 2 ресурса: одну сеть и одну подсеть в зоне, объявленной 
+при вызове модуля. например: ru-central1-a.
+2) Модуль должен возвращать значения vpc.id и subnet.id
+3) Замените ресурсы yandex_vpc_network и yandex_vpc_subnet, созданным модулем.
+4) Сгенерируйте документацию к модулю с помощью terraform-docs.
+
+    Пример вызова:
+````
+module "vpc_dev" {
+  source       = "./vpc"
+  env_name     = "develop"
+  zone = "ru-central1-a"
+  cidr = "10.0.1.0/24"
+}
+````
 
 Решение:
 
-Для выполнения задания были созданы 2-а файла (count-vm.tf, for_each-vm.tf) и внесены доп-е блоки в файл variables.tf
+1) Напишите локальный модуль vpc, который будет создавать 2 ресурса: одну сеть и одну подсеть в зоне, объявленной 
+при вызове модуля. например: ru-central1-a.
 
-<details><summary>Дополнения в файле variables.tf init</summary>
-
-````
-variable "vms_varible" {
-  type = list(object({
-    vm_name = string
-    cpu     = number
-    ram     = number
-    disk    = number
-  }))
-  default = [
-    {
-      vm_name = "vm-1"
-      cpu     = 2
-      ram     = 2
-      disk    = 10
-    },
-    {
-      vm_name = "vm-2"
-      cpu     = 4
-      ram     = 4
-      disk    = 15
-    }
-  ]
-}
-````
-</details>
-
-Ниже приведены тексты модулей (count-vm.tf, for_each-vm.tf) для создания ВМ.  
-
-<details><summary>Модуль создания одинаковых ВМ, count-vm.tf init</summary>
+Содержание модуля ./vpc/main.tf:
 
 ````
-locals {
-  ssh_key_const_vm = file("~/.ssh/id_rsa.pub")
-}
-
-# Create virtual machines based on constant instance_configs
-resource "yandex_compute_instance" "vm-const" {
-  name        = "vm-const-${count.index}"
-  platform_id = "standard-v1"
-
-  count = 2
-
-  resources {
-    cores  = var.vms_const.cpu
-    memory = var.vms_const.ram
-  }
-
-  boot_disk {
-    initialize_params {
-      image_id = data.yandex_compute_image.ubuntu-2004-lts.image_id
-      type = "network-hdd"
-      size = var.vms_const.disk
+terraform {
+  required_providers {
+    yandex = {
+      source = "yandex-cloud/yandex"
     }
   }
+  required_version = ">=0.13"
+}
+
+resource "yandex_vpc_network" "vpc" {
+  name = var.vpc_name
+}
+
+resource "yandex_vpc_subnet" "subnet" {
+  name           = var.subnet_name
+  zone           = var.zone
+  network_id     = yandex_vpc_network.vpc.id
+  v4_cidr_blocks = [var.subnet_cidr_block]
+}
+````
+
+2) Модуль должен возвращать значения vpc.id и subnet.id
+
+````
+output "vpc_id" {
+  value = yandex_vpc_network.vpc.id
+}
+
+output "subnet_id" {
+  value = yandex_vpc_subnet.subnet.id
+}
+````
+
+3) Замените ресурсы yandex_vpc_network и yandex_vpc_subnet, созданным модулем.
+
+````
+module "test-vm" {
+  source          = "git::https://github.com/udjin10/yandex_compute_instance.git?ref=main"
+  env_name        = var.vpc_name
+  network_id      = module.vpc.vpc_id
+  subnet_zones    = [ var.default_zone ]
+  subnet_ids      = [ module.vpc.subnet_id ]
+  instance_name   = var.vm_web_name
+  instance_count  = 1
+  image_family    = "ubuntu-2004-lts"
+  public_ip       = true
 
   metadata = {
-    #ssh-keys = "ubuntu:${var.public_key}"
-    ssh-keys_const_vm = "ubuntu:${local.ssh_key_const_vm}"
+      user-data          = data.template_file.cloudinit.rendered #Для демонстрации №3
+      serial-port-enable = 1
   }
-
-  scheduling_policy { preemptible = true }
-
-  network_interface {
-    subnet_id = yandex_vpc_subnet.develop.id
-    nat       = true
-  }
-  allow_stopping_for_update = true
 }
 ````
+
+4) Сгенерируйте документацию к модулю с помощью terraform-docs.
+
+Для генерации документации модуля vpc.tf использовал terraform-docs запустив в docker.
+Ниже приведена команда запуска докер контейнера:
+
+````
+home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src/vpc$ docker run --rm \
+--volume "$(pwd):/terraform-docs" -u $(id -u) quay.io/terraform-docs/terraform-docs:0.16.0  \
+markdown /terraform-docs > doc.md
+````
+
+В результате выполнения сгенерирован [doc.md](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.4%2Fsrc%2Fvpc%2Fdoc.md).   
+
+<details><summary>Содержание сгенерированной документации к модулю vpc.tf</summary>
+
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >=0.13 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_yandex"></a> [yandex](#provider\_yandex) | n/a |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [yandex_vpc_network.vpc](https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs/resources/vpc_network) | resource |
+| [yandex_vpc_subnet.subnet](https://registry.terraform.io/providers/yandex-cloud/yandex/latest/docs/resources/vpc_subnet) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_subnet_cidr_block"></a> [subnet\_cidr\_block](#input\_subnet\_cidr\_block) | n/a | `string` | n/a | yes |
+| <a name="input_subnet_name"></a> [subnet\_name](#input\_subnet\_name) | n/a | `string` | n/a | yes |
+| <a name="input_vpc_name"></a> [vpc\_name](#input\_vpc\_name) | n/a | `string` | n/a | yes |
+| <a name="input_zone"></a> [zone](#input\_zone) | n/a | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| <a name="output_subnet_id"></a> [subnet\_id](#output\_subnet\_id) | n/a |
+| <a name="output_vpc_id"></a> [vpc\_id](#output\_vpc\_id) | n/a |
+
 </details>
-
-
-<details><summary>Модуль создания ВМ с различными параметрами, for_each-vm.tf init</summary>
-
-````
-locals {
-  ssh_key_varible_vm = file("~/.ssh/id_rsa.pub")
-}
-
-# Create virtual machines based on the instance_configs variable
-resource "yandex_compute_instance" "vm" {
-  depends_on = [yandex_compute_instance.vm-const]
-  for_each = { for cfg in var.vms_varible : cfg.vm_name => cfg }
-
-  name        = each.value.vm_name
-  platform_id = "standard-v1"
-
-  resources {
-    cores  = each.value.cpu
-    memory = each.value.ram
-  }
-  boot_disk {
-    initialize_params {
-      image_id = data.yandex_compute_image.ubuntu-2004-lts.image_id
-      type = "network-hdd"
-      size = each.value.disk
-    }
-  }
-
-  metadata = {
-    #ssh-keys = "ubuntu:${var.public_key}"
-    ssh-keys_varible_vm = "ubuntu:${local.ssh_key_varible_vm}"
-  }
-
-  scheduling_policy { preemptible = true }
-
-  network_interface {
-    subnet_id = yandex_vpc_subnet.develop.id
-    nat       = true
-  }
-  allow_stopping_for_update = true
-}
-````
-</details>
-
-Ниже представлен скриншот из личного кабинета с запущенными ВМ с учетом очередности.
-
-![2_final.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F2_final.png)
-
-Ниже представлен скриншот выполнения команды terraform apply, показывающий очередность создания ВМ.  
-
-![2.3_create.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F2.3_create.png)
 
 
 ## Задание 3
 
-1) Создайте 3 одинаковых виртуальных диска, размером 1 Гб с помощью ресурса yandex_compute_disk и мета-аргумента count.  
-2) Создайте одну любую ВМ. Используйте блок dynamic secondary_disk{..} и мета-аргумент for_each для подключения 
-созданных вами дополнительных дисков.  
-3) Назначьте ВМ созданную в 1-м задании группу безопасности.  
+1) Выведите список ресурсов в стейте.  
+2) Удалите из стейта модуль vpc.  
+3) Импортируйте его обратно. Проверьте terraform plan - изменений быть не должно. Приложите список выполненных команд 
+и вывод.  
 
 Решение:
 
-1) Создайте 3 одинаковых виртуальных диска, размером 1 Гб с помощью ресурса yandex_compute_disk и мета-аргумента count.
+1) Выведите список ресурсов в стейте.   
 
 ````
-resource "yandex_compute_disk" "virtual_disk" {
-  count = 3
-  name  = "virtual-disk-${count.index}"
-  size  = 5
-  type  = "network-hdd"
-  zone  = var.default_zone
-}
-````
-
-2) Создайте одну любую ВМ. Используйте блок dynamic secondary_disk{..} и мета-аргумент for_each для подключения 
-созданных вами дополнительных дисков.
-3) Назначьте ВМ созданную в 1-м задании группу безопасности.  
-
-<details><summary>Модуль создания ВМ с применением гр. безопасности и подключении дисков </summary>
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ terraform state list
+data.template_file.cloudinit
+module.test-vm.data.yandex_compute_image.my_image
+module.test-vm.yandex_compute_instance.vm[0]
+module.vpc.yandex_vpc_network.vpc
+module.vpc.yandex_vpc_subnet.subnet
 
 ````
-resource "yandex_compute_instance" "virtual_machine" {
-  depends_on = [yandex_compute_instance.vm]
-  name = "host-disk-storage"
-  zone = var.default_zone
-  #platform_id = var.default_platform_id
-  resources {
-    cores  = 2
-    memory = 2
-  }
 
-  boot_disk {
-    initialize_params {
-      image_id = data.yandex_compute_image.ubuntu-2004-lts.image_id
-    }
-  }
+![3.1.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.4%2F3.1.png)
 
-  dynamic "secondary_disk" {
-    for_each = yandex_compute_disk.virtual_disk
-    content {
-      device_name = "disk-${secondary_disk.key}"
-      disk_id     = yandex_compute_disk.virtual_disk[secondary_disk.key].id
-    }
-  }
 
-  metadata = {
-    ssh-keys_varible_vm = "ubuntu:${local.ssh_key_varible_vm}"
-  }
-
-  scheduling_policy { preemptible = true }
-
-  network_interface {
-    subnet_id = yandex_vpc_subnet.develop.id
-    nat       = true
-  }
-  allow_stopping_for_update = true
-}
+2) Удалите из стейта модуль vpc. 
 
 ````
-</details>
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ terraform state list | \
+grep 'module.vpc' | xargs terraform state rm
+Removed module.vpc.yandex_vpc_network.vpc
+Removed module.vpc.yandex_vpc_subnet.subnet
+Successfully removed 2 resource instance(s).
 
-Ниже скриншот успешного запуска проекта с применением в ВМ правил безопасности и подключение 3-х дисков.
-
-![3_all.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F3_all.png)
-
-
-## Задание 4
-
-1) Создайте inventory-файл для ansible. Используйте функцию tepmplatefile и файл-шаблон для создания 
-ansible inventory-файла из лекции. Готовый код возьмите из демонстрации к лекции demonstration2. Передайте в него 
-в качестве переменных имена и внешние ip-адреса ВМ из задания 2.1 и 2.2.  
-2) Выполните код. Приложите скриншот получившегося файла.  
-Для общего зачета создайте в вашем GitHub репозитории новую ветку terraform-03. Закомитьте в эту ветку свой 
-финальный код проекта, пришлите ссылку на коммит.  
-Удалите все созданные ресурсы.  
-
-Решение:
-
-
-
-<details><summary>Модуль создания c функцией tepmplatefile для создания inventory-файла.</summary>
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ terraform state list
+data.template_file.cloudinit
+module.test-vm.data.yandex_compute_image.my_image
+module.test-vm.yandex_compute_instance.vm[0]
 
 ````
-resource "local_file" "hosts_cfg" {
-  content = templatefile("${path.module}/hosts.tftpl",
-    {
-      webservers  = yandex_compute_instance.vm-const
-      webservers1 = yandex_compute_instance.vm
-    }
-  )
-  filename = "${abspath(path.module)}/hosts.cfg"
-}
-````
-</details>
 
-<details><summary>Файл-шаблон для создания ansible inventory-файла.</summary>
+![3.2.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.4%2F3.2.png)
+
+3) Импортируйте его обратно. Проверьте terraform plan - изменений быть не должно. Приложите список выполненных команд 
+и вывод.
+
+Для импорта обратно в state удаленных ресурсов пришлось "перемотать" историю в консоли. Во время выполнения 
+terraform apply выводился список создаваемых ресурсов и их id. Ниже кусок вывода:
 
 ````
-[webservers]
-
-%{~ for i in webservers ~}
-
-${i["name"]}   ansible_host=${i["network_interface"][0]["nat_ip_address"]} 
-%{~ endfor ~}
-
-%{~ for i in webservers1 ~}
-
-${i["name"]}   ansible_host=${i["network_interface"][0]["nat_ip_address"]} 
-%{~ endfor ~}
+module.vpc.yandex_vpc_network.vpc: Creation complete after 0s [id=enp3pjbnc6cbrmfretm0]
+module.vpc.yandex_vpc_subnet.subnet: Creating...
+module.vpc.yandex_vpc_subnet.subnet: Creation complete after 0s [id=e9bjnejqa3igibpeafva]
+module.test-vm.yandex_compute_instance.vm[0]: Creating...
 ````
-</details>
 
-Скриншот созданного файла, после выполнения кода проекта.
+Для импорта ресурса сети воспользуемся командой terraform import 'module.vpc.yandex_vpc_network.vpc' enp3pjbnc6cbrmfretm0
 
-![4_all.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.3%2F4_all.png)
+````
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ terraform import 'module.vpc.yandex_vpc_network.vpc' enp3pjbnc6cbrmfretm0
+data.template_file.cloudinit: Reading...
+data.template_file.cloudinit: Read complete after 0s [id=2536a516b2daf5ad4b60733dcac2aca9b3a1c395528c3cb68cd92245a4d63865]
+module.vpc.yandex_vpc_network.vpc: Importing from ID "enp3pjbnc6cbrmfretm0"...
+module.vpc.yandex_vpc_network.vpc: Import prepared!
+  Prepared yandex_vpc_network for import
+module.test-vm.data.yandex_compute_image.my_image: Reading...
+module.vpc.yandex_vpc_network.vpc: Refreshing state... [id=enp3pjbnc6cbrmfretm0]
+module.test-vm.data.yandex_compute_image.my_image: Read complete after 1s [id=fd80f8mhk83hmvp10vh2]
+
+Import successful!
+
+The resources that were imported are shown above. These resources are now in
+your Terraform state and will henceforth be managed by Terraform.
+````
+
+Для импорта ресурса подсети воспользуемся командой terraform import 'module.vpc.yandex_vpc_subnet.subnet' e9bjnejqa3igibpeafva
+
+````
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ terraform import 'module.vpc.yandex_vpc_subnet.subnet' e9bjnejqa3igibpeafva
+data.template_file.cloudinit: Reading...
+data.template_file.cloudinit: Read complete after 0s [id=2536a516b2daf5ad4b60733dcac2aca9b3a1c395528c3cb68cd92245a4d63865]
+module.test-vm.data.yandex_compute_image.my_image: Reading...
+module.vpc.yandex_vpc_subnet.subnet: Importing from ID "e9bjnejqa3igibpeafva"...
+module.vpc.yandex_vpc_subnet.subnet: Import prepared!
+  Prepared yandex_vpc_subnet for import
+module.vpc.yandex_vpc_subnet.subnet: Refreshing state... [id=e9bjnejqa3igibpeafva]
+module.test-vm.data.yandex_compute_image.my_image: Read complete after 0s [id=fd80f8mhk83hmvp10vh2]
+
+Import successful!
+
+The resources that were imported are shown above. These resources are now in
+your Terraform state and will henceforth be managed by Terraform.
+````
+
+Проверяем инфраструктуру. terraform plan
+
+````
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ terraform plan
+data.template_file.cloudinit: Reading...
+data.template_file.cloudinit: Read complete after 0s [id=2536a516b2daf5ad4b60733dcac2aca9b3a1c395528c3cb68cd92245a4d63865]
+module.test-vm.data.yandex_compute_image.my_image: Reading...
+module.vpc.yandex_vpc_network.vpc: Refreshing state... [id=enp3pjbnc6cbrmfretm0]
+module.test-vm.data.yandex_compute_image.my_image: Read complete after 0s [id=fd80f8mhk83hmvp10vh2]
+module.vpc.yandex_vpc_subnet.subnet: Refreshing state... [id=e9bjnejqa3igibpeafva]
+module.test-vm.yandex_compute_instance.vm[0]: Refreshing state... [id=fhmpecn0bq2q8r57b6tb]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration and found no differences, so no changes are needed.
+(venv) home@home:~/DevOps/Practice/devops-netology/Old_practice/Раздел_7/Practice_7.4/src$ 
+
+````
+
+![3.3.png](Old_practice%2F%D0%A0%D0%B0%D0%B7%D0%B4%D0%B5%D0%BB_7%2FPractice_7.4%2F3.3.png)
