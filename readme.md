@@ -3,40 +3,25 @@
 # Tag: 08-ansible-03-yandex
 
 ---
-## Подготовка к выполнению
-Подготовьте в Yandex Cloud три хоста: для clickhouse, для vector и для lighthouse.
-Репозиторий LightHouse находится по ссылке.
-
-## Основная часть
- - Допишите playbook: нужно сделать ещё один play, который устанавливает и настраивает LightHouse.
- - При создании tasks рекомендую использовать модули: get_url, template, yum, apt.
- - Tasks должны: скачать статику LightHouse, установить Nginx или любой другой веб-сервер, настроить его конфиг для открытия LightHouse, запустить веб-сервер.
- - Подготовьте свой inventory-файл prod.yml.
- - Запустите ansible-lint site.yml и исправьте ошибки, если они есть.
- - Попробуйте запустить playbook на этом окружении с флагом --check.
- - Запустите playbook на prod.yml окружении с флагом --diff. Убедитесь, что изменения на системе произведены.
- - Повторно запустите playbook с флагом --diff и убедитесь, что playbook идемпотентен.
- - Подготовьте README.md-файл по своему playbook. В нём должно быть описано: что делает playbook, какие у него есть параметры и теги.
- - Готовый playbook выложите в свой репозиторий, поставьте тег 08-ansible-03-yandex на фиксирующий коммит, в ответ предоставьте ссылку на него.
-
-## Как оформить решение задания
-Выполненное домашнее задание пришлите в виде ссылки на .md-файл в вашем репозитории.
 
 Инфраструктура разворачивается в YandexCloud с помощью Terraform. Исходники находятся в директории vm. В результате 
-развертывания инфраструкры генерируется файл с hosts.yml, который содержится ip адреса групп (Clickhouse, Vector, Lighthouse)  
+развертывания инфраструктуры генерируется файл с hosts.yml, который содержится ip адреса групп (Clickhouse, Vector, Lighthouse)  
 
  - Допишите playbook: нужно сделать ещё один play, который устанавливает и настраивает LightHouse.
  - При создании tasks рекомендую использовать модули: get_url, template, yum, apt.
  - Tasks должны: скачать статику LightHouse, установить Nginx или любой другой веб-сервер, настроить его конфиг для открытия LightHouse, запустить веб-сервер.
+ - Полное описание всех блоков и переменных приведено в плейбук all.yml.
+
+Ниже приведен блок (из all.yml) выполняющий установку и настройка Lighthouse. 
 
 ````
+    #Блок установки Lighthouse на VM из группы lighthouse
   - name: Install Lighthouse
     tags: lighthouse
     hosts: lighthouse
     vars_files:
       - ./group_vars/lighthouse/vars.yml
-      
-#Блок handler который выполняется после всех таск, рестарт службы
+    #Блок handler который выполняется после всех таск, рестарт службы
     handlers:
       - name: Start nginx service
         become: true
@@ -44,8 +29,7 @@
           name: nginx
           state: restarted
     tasks:
- 
-# Добавление адресов серверов в /etc/hosts    
+      #Прописываем в hosts ip серверов
       - name: Add clickhouse addresses to /etc/hosts
         become: true
         lineinfile:
@@ -55,22 +39,19 @@
           state: present
         when: hostvars[item].ansible_host is defined
         with_items: "{{ groups.clickhouse }}"
-
-# Установка дополнительного репозитария
+      #Устанавливаем доступ к репозиторию
       - name: Install epel-release package
         become: true
         ansible.builtin.yum:
           name: epel-release
           state: present
-
-# Обновление спискаа пакетов в репозитариях          
+      #Обновление списка пакетов
       - name: Update repositories
         become: true
         ansible.builtin.yum:
           name: '*'
           state: latest
-
-# Установка nginx и архиватора unzip
+      #Установка пакетов NGINX и unzip
       - name: Install Nginx and Unzip
         become: true
         ansible.builtin.yum:
@@ -78,40 +59,53 @@
             - nginx
             - unzip
           state: present
-
-      - block:
-# Получение zip дистрибутива Lighthouse     
-          - name: Get lighthouse distrib
-            ansible.builtin.get_url:
-              url: "{{ lighthouse_distrib }}"
-              dest: ./lighthouse.zip
-
-# Создание директории для Lighthouse
-          - name: Create directory
-            become: true
-            file:
-              path: /usr/share/nginx
-              state: directory
-              force: yes
-
-# Распаковка Lighthouse в рабочую папку
-          - name: Unpack lighthouse archive
-            become: true
-            ansible.builtin.unarchive:
-              src: /home/centos/lighthouse.zip
-              dest: /usr/share/nginx
-              remote_src: yes
-              
-# Создания файла конфигурации nginx              
-          - name: Nginx configuration
-            tags: nginx_config
-            become: true
-            ansible.builtin.copy:
-              dest: /etc/nginx/conf.d/lighthouse.conf
-              content: |
-                {{ nginx_conf | to_nice_yaml(indent=2) }}
-
-            notify: Start nginx service
+      #Получаем пакет из репозитория. Адрес репозитория (переменная - lighthouse_distrib) прописывается в переменных (group_vars/lighthouse/vars.yml)
+      - name: Get lighthouse distrib
+        ansible.builtin.get_url:
+          url: "{{ lighthouse_distrib }}"
+          dest: ./lighthouse.zip
+      #Создание директории для Lighthouse. Директория, где будет расположена Lighthouse (переменная - lighthouse_location_dir)
+      #прописывается в переменных (group_vars/lighthouse/vars.yml)
+      - name: Create directory
+        become: true
+        file:
+          path: "{{ lighthouse_location_dir }}"
+          state: directory
+          force: yes
+      #Распаковка пакета Lighthouse. Директория, где будет расположена Lighthouse (переменная - lighthouse_location_dir)
+      #прописывается в переменных (group_vars/lighthouse/vars.yml)
+      - name: Unpack lighthouse archive
+        become: true
+        ansible.builtin.unarchive:
+          src: /home/centos/lighthouse.zip
+          dest: "{{ lighthouse_location_dir }}"
+          remote_src: yes
+      # Создания файла конфигурации lighthouse
+      - name: NGINX | Create file for lighthouse config
+        become: true
+        ansible.builtin.file:
+          path: /etc/nginx/conf.d/lighthouse.conf
+          state: touch
+          mode: 0644
+        tags: nginx
+      # Создания файла конфигурации lighthouse
+      - name: Lighthouse | Create lighthouse config
+        become: true
+        template:
+          src: lighthouse.conf.j2
+          dest: /etc/nginx/conf.d/lighthouse.conf
+          mode: 0644
+        tags: lighthouse
+      # Создания файла конфигурации nginx
+      - name: NGINX | Create general config
+        become: true
+        template:
+          src: templates/nginx.conf.j2
+          dest: /etc/nginx/nginx.conf
+          mode: 0644
+        #Рестарт NGINX после правки конфигураций
+        notify: Start nginx service
+        tags: nginx
 ````
 
 

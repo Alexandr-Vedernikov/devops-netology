@@ -1,9 +1,0 @@
----
-  clickhouse_version: "23.5.3.24"
-  platform: "x86_64"
-  #https://packages.clickhouse.com/deb/pool/main/c/clickhouse/clickhouse-server_23.4.2.11_amd64.deb
-  #https://packages.clickhouse.com/rpm/stable/clickhouse-client-23.5.3.24.x86_64.rpm
-  clickhouse_packages:
-    - clickhouse-common-static
-    - clickhouse-server
-    - clickhouse-client

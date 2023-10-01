@@ -1,5 +1,0 @@
-# custom configurations for elasticsearch
-
-path.data: /var/lib/elasticsearch
-node.name: netology_test
-

@@ -1,6 +1,0 @@
-[nodes:children]
-manager
-
-[manager]
-TestServer1 ansible_host=127.0.0.1 ansible_port=20000 ansible_user=vagrant
-
