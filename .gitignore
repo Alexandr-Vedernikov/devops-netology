@@ -5,6 +5,8 @@
 # .tfstate files
 *.tfstate
 *.tfstate.*
-
+.vscode/*
+.idea/*
+Old_practice/*
 # own secret vars store.
 personal.auto.tfvars
