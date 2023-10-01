@@ -1,0 +1,26 @@
+worker_processes  1;
+user              {{ ansible_user }};
+events {
+    worker_connections  1024;
+}
+error_log         /var/log/nginx/error.log info;
+pid               /var/run/nginx.pid;
+http {
+    include       mime.types;
+    charset       utf-8;
+    access_log    /var/log/nginx/access.log  combined;
+
+    server {
+        server_name  lighthouse;
+        listen       *:80;
+        listen       [::]:80;
+        location = /404.html {
+            root         {{ lighthouse_location_dir }}/lighthouse-master/;
+        }
+        index index.html index.htm index.php;
+        error_page 404 /404.html;
+        error_page 500 502 503 504 /50x.html;
+        location = /50x.html {
+        }
+    }
+}
