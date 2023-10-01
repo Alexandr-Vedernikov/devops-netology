@@ -1,8 +1,10 @@
 ---
+# Блок установки Clickhouse на VM из группы clickhouse
   - name: Install Clickhouse
     hosts: clickhouse
     vars_files:
       - ./group_vars/clickhouse/vars.yml
+    #Блок handler который выполняется после всех таск, рестарт службы
     handlers:
       - name: Start clickhouse service
         become: true
@@ -10,6 +12,17 @@
           name: clickhouse-server
           state: restarted
     tasks:
+      #При выполнении tasks и возникновении ошибок задачи по блоку передаются в rescue, далее в always. Always выполняется всегда.
+      - block:
+        #Получаем дистрибутивы clickhouse из репозитория. Переменные (имена и версии пакетов, платформа) описываются в
+        #переменных для Clickhouse (group_vars/clickhouse/vars.yml).
+        - name: Get clickhouse distrib (rpm noarch package)
+          ansible.builtin.get_url:
+            url: "https://packages.clickhouse.com/rpm/stable/{{ item }}-{{ clickhouse_version }}.{{ platform }}.rpm"
+            #Указываем расположение пакета и даем названия
+            dest: "./{{ item }}-{{ clickhouse_version }}.rpm"
+          with_items: "{{ clickhouse_packages }}"
+        #Если в верхней части блока были ошибки, подбираем подходящие пакеты
       - block:
         - name: Get clickhouse distrib (rpm noarch package)
           ansible.builtin.get_url:
@@ -22,6 +35,9 @@
             ansible.builtin.get_url:
               url: https://packages.clickhouse.com/rpm/stable/clickhouse-common-static-{{ clickhouse_version }}.{{ platform }}.rpm
               dest: ./clickhouse-common-static-{{ clickhouse_version }}.rpm
+        # Блок Always выполняется всегда.
+        always:
+          #Производим установку скачанных пакетов
         always:
           - name: Install clickhouse packages
             become: true
@@ -30,6 +46,12 @@
                 - clickhouse-common-static-{{ clickhouse_version }}.rpm
                 - clickhouse-client-{{ clickhouse_version }}.rpm
                 - clickhouse-server-{{ clickhouse_version }}.rpm
+            #Запускаем handler. Производим рестарт сервиса.
+            notify: Start clickhouse service
+          #Информируем о выполнении handler
+          - name: Flush handlers
+            ansible.builtin.meta: flush_handlers
+          #Создаем БД clickhouse
             notify: Start clickhouse service
           - name: Flush handlers
             ansible.builtin.meta: flush_handlers
@@ -39,20 +61,22 @@
             failed_when: create_db.rc != 0 and create_db.rc !=82
             changed_when: create_db.rc == 0
 
+  # Блок установки Vector на VM из группы vector
   - name: Install and configure Vector
     hosts: vector
     vars_files:
       - ./group_vars/vector/vars.yml
     vars:
       hostvars: clickhouse
+    #Блок handler который выполняется после всех таск, рестарт службы
     handlers:
       - name: Start Vector service
         become: true
         ansible.builtin.service:
           name: vector
           state: restarted
-
     tasks:
+      #Прописываем в hosts ip серверов
       - name: Add clickhouse addresses to /etc/hosts
         become: true
         lineinfile:
@@ -62,26 +86,19 @@
           state: present
         when: hostvars[item].ansible_host is defined
         with_items: "{{ groups.clickhouse }}"
-
+      #Получаем дистрибутивы Vector из репозитория. Переменные (имена и версии пакетов, платформа) описываются в
+      #переменных для Vector (group_vars/vector/vars.yml).
       - name: Get vector distrib
         ansible.builtin.get_url:
           url: "https://packages.timber.io/vector/latest/vector-{{ vector_version }}.x86_64.rpm"
           dest: "./vector-{{ vector_version }}.x86_64.rpm"
-
+      #Устанавливаем Vector
       - name: Install vector package
         become: true
         ansible.builtin.yum:
           name:
             - "./vector-{{ vector_version }}.x86_64.rpm"
-
-      - name: Redefine vector config name
-        tags: vector_config
-        become: true
-        ansible.builtin.lineinfile:
-          path: /etc/default/vector
-          regexp: 'VECTOR_CONFIG='
-          line: VECTOR_CONFIG=/etc/vector/config.yaml
-
+      #Правим конфигурацию из указанной в переменной groups_vars/vector/vars.yml  
       - name: Create vector config
         tags: vector_config
         become: true
@@ -89,14 +106,16 @@
           dest: /etc/vector/config.yaml
           content: |
             {{ vector_config | to_nice_yaml(indent=2) }}
-
+        #Рестарт службы Vector
         notify: Start Vector service
 
+  #Блок установки Lighthouse на VM из группы lighthouse
   - name: Install Lighthouse
     tags: lighthouse
     hosts: lighthouse
     vars_files:
       - ./group_vars/lighthouse/vars.yml
+    #Блок handler который выполняется после всех таск, рестарт службы
     handlers:
       - name: Start nginx service
         become: true
@@ -104,6 +123,7 @@
           name: nginx
           state: restarted
     tasks:
+      #Прописываем в hosts ip серверов
       - name: Add clickhouse addresses to /etc/hosts
         become: true
         lineinfile:
@@ -113,18 +133,19 @@
           state: present
         when: hostvars[item].ansible_host is defined
         with_items: "{{ groups.clickhouse }}"
-
+      #Устанавливаем доступ к репозиторию
       - name: Install epel-release package
         become: true
         ansible.builtin.yum:
           name: epel-release
           state: present
+      #Обновление списка пакетов
       - name: Update repositories
         become: true
         ansible.builtin.yum:
           name: '*'
           state: latest
-
+      #Установка пакетов NGINX и unzip
       - name: Install Nginx and Unzip
         become: true
         ansible.builtin.yum:
@@ -132,30 +153,50 @@
             - nginx
             - unzip
           state: present
-
-      - block:
-          - name: Get lighthouse distrib
-            ansible.builtin.get_url:
-              url: "{{ lighthouse_distrib }}"
-              dest: ./lighthouse.zip
-          - name: Create directory
-            become: true
-            file:
-              path: /usr/share/nginx
-              state: directory
-              force: yes
-          - name: Unpack lighthouse archive
-            become: true
-            ansible.builtin.unarchive:
-              src: /home/centos/lighthouse.zip
-              dest: /usr/share/nginx
-              remote_src: yes
-          - name: Nginx configuration
-            tags: nginx_config
-            become: true
-            ansible.builtin.copy:
-              dest: /etc/nginx/conf.d/lighthouse.conf
-              content: |
-                {{ nginx_conf | to_nice_yaml(indent=2) }}
-
-            notify: Start nginx service
+      #Получаем пакет из репозитория. Адрес репозитория (переменная - lighthouse_distrib) прописывается в переменных (group_vars/lighthouse/vars.yml)
+      - name: Get lighthouse distrib
+        ansible.builtin.get_url:
+          url: "{{ lighthouse_distrib }}"
+          dest: ./lighthouse.zip
+      #Создание директории для Lighthouse. Директория, где будет расположена Lighthouse (переменная - lighthouse_location_dir)
+      #прописывается в переменных (group_vars/lighthouse/vars.yml)
+      - name: Create directory
+        become: true
+        file:
+          path: "{{ lighthouse_location_dir }}"
+          state: directory
+          force: yes
+      #Распаковка пакета Lighthouse. Директория, где будет расположена Lighthouse (переменная - lighthouse_location_dir)
+      #прописывается в переменных (group_vars/lighthouse/vars.yml)
+      - name: Unpack lighthouse archive
+        become: true
+        ansible.builtin.unarchive:
+          src: /home/centos/lighthouse.zip
+          dest: "{{ lighthouse_location_dir }}"
+          remote_src: yes
+      # Создания файла конфигурации lighthouse
+      - name: NGINX | Create file for lighthouse config
+        become: true
+        ansible.builtin.file:
+          path: /etc/nginx/conf.d/lighthouse.conf
+          state: touch
+          mode: 0644
+        tags: nginx
+      # Создания файла конфигурации lighthouse
+      - name: Lighthouse | Create lighthouse config
+        become: true
+        template:
+          src: lighthouse.conf.j2
+          dest: /etc/nginx/conf.d/lighthouse.conf
+          mode: 0644
+        tags: lighthouse
+      # Создания файла конфигурации nginx
+      - name: NGINX | Create general config
+        become: true
+        template:
+          src: templates/nginx.conf.j2
+          dest: /etc/nginx/nginx.conf
+          mode: 0644
+        #Рестарт NGINX после правки конфигураций
+        notify: Start nginx service
+        tags: nginx
