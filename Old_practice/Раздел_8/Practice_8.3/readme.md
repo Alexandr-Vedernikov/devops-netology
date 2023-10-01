@@ -1,5 +1,7 @@
 # Домашнее задание к занятию 8.3 «Использование Ansible»
 
+# Tag: 08-ansible-03-yandex
+
 ---
 ## Подготовка к выполнению
 Подготовьте в Yandex Cloud три хоста: для clickhouse, для vector и для lighthouse.
