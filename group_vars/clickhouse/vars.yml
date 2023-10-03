@@ -1,7 +1,0 @@
----
-  clickhouse_version: "23.5.3.24"
-  platform: "x86_64"
-  clickhouse_packages:
-    - clickhouse-common-static
-    - clickhouse-server
-    - clickhouse-client

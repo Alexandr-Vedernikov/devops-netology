@@ -7,5 +7,5 @@ resource "local_file" "hosts_cfg" {
       lighthouse  = yandex_compute_instance.group_vm_server_lighthouse
     }
   )
-  filename = "${abspath(path.module)}/hosts.yml"
+  filename = "../${path.module}/playbook/inventory/prod.yml"
 }

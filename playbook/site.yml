@@ -1,0 +1,20 @@
+---
+  - name: Install Clickhouse
+    hosts: clickhouse
+    become: true
+    vars:
+      clickhouse_version: "1.13"
+    roles:
+      clickhouse-role
+
+  - name: Install Vector
+    hosts: vector
+    become: true
+    vars:
+      vector_version: "0.3"
+  - name: Install Lighthouse
+    hosts: lighthouse
+    become: true
+    vars:
+      lighthouse_version: "0.3"
+
