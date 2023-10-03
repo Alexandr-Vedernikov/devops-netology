@@ -1,7 +1,6 @@
 data "yandex_compute_image" "lighthouse_image" {
   family = "${local.server_settings.lighthouse.image}"
 }
-
 resource "yandex_compute_instance" "group_vm_server_lighthouse" {
   count        = "${local.count_lighthouse}"
   name         = "${local.name_group_list[2]}-${count.index}"

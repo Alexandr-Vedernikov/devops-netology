@@ -38,10 +38,3 @@ resource "yandex_compute_instance" "group_vm_server_vector" {
     inline = ["sudo yum install -y python3"]
   }
 }
-
-#data "template_file" "configvector" {
-# template = file("./config.yml")
-# vars = {
-# ssh_key = local.ssh_key
-# }
-#}

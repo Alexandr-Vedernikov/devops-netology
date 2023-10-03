@@ -10,7 +10,6 @@ locals {
   ssh_key = file("~/.ssh/id_rsa.pub")
   private_key = file("~/.ssh/id_rsa")
 
-
   ### параметры (физическаие и типы ОС) групп серверов.
   server_settings = {
     clickhouse = {

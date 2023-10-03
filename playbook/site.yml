@@ -6,7 +6,6 @@
       clickhouse_version: "1.13"
     roles:
       clickhouse-role
-
   - name: Install Vector
     hosts: vector
     become: true
@@ -17,4 +16,5 @@
     become: true
     vars:
       lighthouse_version: "0.3"
+
 

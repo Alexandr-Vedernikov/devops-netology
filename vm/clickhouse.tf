@@ -1,7 +1,6 @@
 data "yandex_compute_image" "clickhouse_image" {
   family = "${local.server_settings.clickhouse.image}"
 }
-
 resource "yandex_compute_instance" "group_vm_server_clickhouse" {
   count       = "${local.count_clickhouse}"
   name        = "${local.name_group_list[0]}-${count.index}"
