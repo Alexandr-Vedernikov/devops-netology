@@ -1,0 +1,3 @@
+---
+  lighthouse_location_dir: "/usr/share/lighthouse"
+  lighthouse_distrib: https://github.com/VKCOM/lighthouse/archive/refs/heads/master.zip
