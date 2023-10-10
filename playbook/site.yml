@@ -1,0 +1,83 @@
+---
+- name: Install ClickHouse
+  hosts: clickhouse
+  become: true
+  vars:
+    clickhouse_version: "23.5.3.24"
+
+  tasks:
+    - name: Install ClickHouse
+      include_role:
+        name: clickhouse-role
+      vars:
+        clickhouse_version: "{{ clickhouse_version }}"
+
+- name: Install Vector
+  hosts: vector
+  become: true
+  vars:
+    vector_version: "0.33.0-1"
+  tasks:
+    - name: Install Vector
+      include_role:
+        name: vector-role
+      vars:
+        vector_version: "{{ vector_version }}"
+
+- name: Install Lighthouse
+  hosts: lighthouse
+  become: true
+  vars:
+    lighthouse_version: "0.5.0"
+  tasks:
+    - name: Install Lighthouse
+      include_role:
+        name: lighthouse-role
+      vars:
+        vector_version: "{{ vector_version }}"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
